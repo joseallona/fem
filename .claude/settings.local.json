@@ -1,0 +1,67 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /Users/joseallona/Sites/fem && git add -A && git diff --staged --quiet || (git commit -m \"auto: $(git diff --staged --name-only | head -5 | tr '\\n' ' ' | xargs)\" && git push origin main) 2>/dev/null || true",
+            "statusMessage": "Committing and pushing changes..."
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(npx skills-installer:*)",
+      "Bash(ls:*)",
+      "Bash(docker compose:*)",
+      "Bash(find /Users/joseallona/Sites/fem/frontend -type f \\\\\\(-name *settings* -o -name *admin* \\\\\\))",
+      "Bash(curl -s http://localhost:8000/settings/llm)",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s http://localhost:8000/health)",
+      "Bash(curl -s -X POST \"http://localhost:8000/themes/a90510e8-6f1e-4078-8d32-087df36ddb50/source-discovery/async\")",
+      "Bash(curl -s \"http://localhost:8000/jobs/c23421cd-f962-4bef-a7ae-54af461d8ff3\")",
+      "Bash(curl -s -X POST \"http://localhost:8000/themes/c529c9c0-bfc4-4e41-9e85-a7657c3314d2/source-discovery\")",
+      "Bash(grep:*)",
+      "Bash(curl -s -X POST http://localhost:8000/themes/ba4b2bd4-87a8-4a8d-b31e-ca3451973e05/runs/trigger)",
+      "Bash(curl -s http://localhost:8000/runs/8eadf558-e27b-4bde-a222-af89ccc13fd5)",
+      "Bash(curl -s http://localhost:8000/runs/02bca066-9729-4a23-bd15-be5ae74a7176)",
+      "Bash(head -20 grep -rn \"SignalLinkOut\\\\|signal_title\" /Users/joseallona/Sites/fem/backend/app/schemas/)",
+      "Bash(curl -s http://localhost:8000/themes/ba4b2bd4-87a8-4a8d-b31e-ca3451973e05/trend-scenario-matrix)",
+      "Bash(python -m py_compile app/routers/settings.py app/routers/sources.py app/services/scoring.py app/services/relevance.py)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(node_modules/typescript/bin/tsc --noEmit)",
+      "Bash(npm install:*)",
+      "Bash(git -C /Users/joseallona/Sites/fem diff --name-only)",
+      "Bash(docker exec fem-db-1:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "Bash(python3 -c \"import sys,json; p=json.load\\(sys.stdin\\); print\\(json.dumps\\(p.get\\('exports', {}\\), indent=2\\)\\)\")",
+      "Bash(python -c \"from app.services.axis_selector import run_axis_selection; from app.services.scenario_generator import run_scenario_generation; from app.services.llm_gateway import generate_scenario_draft, check_axis_independence, propose_axis_poles; print\\('imports OK'\\)\")",
+      "Bash(python -m py_compile app/services/axis_selector.py app/services/scenario_generator.py app/services/llm_gateway.py)",
+      "Bash(python -m py_compile app/routers/themes.py)",
+      "Bash(python -m py_compile app/services/signal_archive.py app/services/pipeline.py app/services/llm_gateway.py app/core/config.py)",
+      "Bash(python -m py_compile app/services/crawler.py app/services/crawler_js.py)",
+      "Bash(docker --version)",
+      "Bash(pip show:*)",
+      "Bash(pip install:*)",
+      "Bash(playwright install:*)",
+      "Bash(python3:*)",
+      "Bash(docker volume:*)",
+      "Bash(ollama pull:*)",
+      "WebFetch(domain:ollama.com)",
+      "Bash(ollama list:*)",
+      "Bash(curl -s http://localhost:11434/api/generate -d '{\"model\":\"deepseek-r1:32b\",\"prompt\":\"Say OK\",\"stream\":false}' --max-time 30)",
+      "Bash(curl -s http://localhost:11434/api/tags)",
+      "Bash(curl -s http://localhost:11434/api/generate -d '{\"model\":\"llama3.1\",\"prompt\":\"Say OK\",\"stream\":false}' --max-time 30)",
+      "Bash(git branch *)",
+      "Bash(git fetch *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Skill(update-config)"
+    ]
+  }
+}
