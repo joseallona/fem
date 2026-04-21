@@ -324,6 +324,14 @@ function clip(text: string | undefined, max: number): string {
   return text.length > max ? text.slice(0, max - 1) + "…" : text;
 }
 
+// Extract a short 4-5 word concept from a long pole description
+function shortConcept(text: string | undefined, maxWords = 5): string {
+  if (!text) return "";
+  const words = text.trim().split(/\s+/);
+  if (words.length <= maxWords) return text;
+  return words.slice(0, maxWords).join(" ") + "…";
+}
+
 export function ScenarioQuadrantChart({
   scenarios,
   drafts,
@@ -341,9 +349,9 @@ export function ScenarioQuadrantChart({
   const shares = scenarios.map(sc => (supportValues?.[sc.id] ?? sc.support_score) / mass);
   const allZero = shares.every(s => s === 0);
 
-  // Layout
-  const W = 580, H = 620;
-  const margin = { top: 56, right: 56, bottom: 110, left: 100 };
+  // Layout — generous margins so axis labels sit cleanly outside the chart
+  const W = 560, H = 560;
+  const margin = { top: 48, right: 32, bottom: 80, left: 32 };
   const iw = W - margin.left - margin.right;
   const ih = H - margin.top - margin.bottom;
   const qw = iw / 2, qh = ih / 2;
@@ -384,49 +392,53 @@ export function ScenarioQuadrantChart({
         {/* Outer border */}
         <rect x={0} y={0} width={iw} height={ih} fill="none" stroke="#cbd5e1" strokeWidth={1.5} rx={6} />
 
-        {/* ── X-axis labels (axis1) ── */}
+        {/* ── X-axis labels (axis1) — inside chart edges, bottom ── */}
         {axis1 && (
           <>
-            {/* Arrow + pole_low on far left */}
-            <text x={4} y={ih + 18} fontSize={10} fill="#64748b" textAnchor="start">
-              ← {clip(axis1.pole_low, 38)}
-            </text>
-            <text x={iw - 4} y={ih + 18} fontSize={10} fill="#64748b" textAnchor="end">
-              {clip(axis1.pole_high, 38)} →
-            </text>
-            {/* Driver name centered below */}
-            <text x={iw / 2} y={ih + 38} fontSize={11} fill="#94a3b8" textAnchor="middle" fontStyle="italic">
-              {clip(axis1.driver_name, 50)}
+            {/* pole_low: inside chart, bottom-left corner */}
+            <g style={{ cursor: "default" }}>
+              <title>{axis1.pole_low}</title>
+              <text x={8} y={ih - 10} fontSize={10} fontWeight={500} fill="#475569" textAnchor="start">
+                ← {shortConcept(axis1.pole_low)}
+              </text>
+            </g>
+            {/* pole_high: inside chart, bottom-right corner */}
+            <g style={{ cursor: "default" }}>
+              <title>{axis1.pole_high}</title>
+              <text x={iw - 8} y={ih - 10} fontSize={10} fontWeight={500} fill="#475569" textAnchor="end">
+                {shortConcept(axis1.pole_high)} →
+              </text>
+            </g>
+            {/* driver name: below chart */}
+            <text x={iw / 2} y={ih + 28} fontSize={11} fill="#94a3b8" textAnchor="middle" fontStyle="italic">
+              {clip(axis1.driver_name, 60)}
             </text>
           </>
         )}
 
-        {/* ── Y-axis labels (axis2) ── */}
+        {/* ── Y-axis labels (axis2) — inside chart edges, left column ── */}
         {axis2 && (
           <>
-            {/* pole_high — above-left, left-aligned so it never clips */}
+            {/* pole_high: inside chart, top-left corner */}
+            <g style={{ cursor: "default" }}>
+              <title>{axis2.pole_high}</title>
+              <text x={8} y={18} fontSize={10} fontWeight={500} fill="#475569" textAnchor="start">
+                ↑ {shortConcept(axis2.pole_high)}
+              </text>
+            </g>
+            {/* pole_low: inside chart, bottom-left corner — sits above x-axis label */}
+            <g style={{ cursor: "default" }}>
+              <title>{axis2.pole_low}</title>
+              <text x={8} y={ih - 26} fontSize={10} fontWeight={500} fill="#475569" textAnchor="start">
+                ↓ {shortConcept(axis2.pole_low)}
+              </text>
+            </g>
+            {/* driver name: left of chart, rotated — position at absolute x≈14 */}
             <text
-              x={-(margin.left - 8)} y={-38}
-              fontSize={10} fill="#64748b" textAnchor="start"
+              transform={`translate(-20,${ih / 2}) rotate(-90)`}
+              fontSize={11} fill="#94a3b8" textAnchor="middle" fontStyle="italic"
             >
-              ↑ {clip(axis2.pole_high, 42)}
-            </text>
-            {/* pole_low — below x-axis labels, left-aligned */}
-            <text
-              x={-(margin.left - 8)} y={ih + 70}
-              fontSize={10} fill="#64748b" textAnchor="start"
-            >
-              ↓ {clip(axis2.pole_low, 42)}
-            </text>
-            {/* Driver name rotated along y-axis — absolute x=14, always in viewBox */}
-            <text
-              transform={`translate(${-(margin.left - 14)},${ih / 2}) rotate(-90)`}
-              fontSize={11}
-              fill="#94a3b8"
-              textAnchor="middle"
-              fontStyle="italic"
-            >
-              {clip(axis2.driver_name, 50)}
+              {clip(axis2.driver_name, 60)}
             </text>
           </>
         )}
