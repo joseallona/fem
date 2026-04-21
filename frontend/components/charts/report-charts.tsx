@@ -342,8 +342,8 @@ export function ScenarioQuadrantChart({
   const allZero = shares.every(s => s === 0);
 
   // Layout
-  const W = 580, H = 580;
-  const margin = { top: 56, right: 56, bottom: 88, left: 100 };
+  const W = 580, H = 620;
+  const margin = { top: 56, right: 56, bottom: 110, left: 100 };
   const iw = W - margin.left - margin.right;
   const ih = H - margin.top - margin.bottom;
   const qw = iw / 2, qh = ih / 2;
@@ -389,11 +389,10 @@ export function ScenarioQuadrantChart({
           <>
             {/* Arrow + pole_low on far left */}
             <text x={4} y={ih + 18} fontSize={10} fill="#64748b" textAnchor="start">
-              ← {clip(axis1.pole_low, 26)}
+              ← {clip(axis1.pole_low, 38)}
             </text>
-            {/* Arrow + pole_high on far right */}
             <text x={iw - 4} y={ih + 18} fontSize={10} fill="#64748b" textAnchor="end">
-              {clip(axis1.pole_high, 26)} →
+              {clip(axis1.pole_high, 38)} →
             </text>
             {/* Driver name centered below */}
             <text x={iw / 2} y={ih + 38} fontSize={11} fill="#94a3b8" textAnchor="middle" fontStyle="italic">
@@ -405,17 +404,23 @@ export function ScenarioQuadrantChart({
         {/* ── Y-axis labels (axis2) ── */}
         {axis2 && (
           <>
-            {/* pole_high at top */}
-            <text x={-10} y={8} fontSize={10} fill="#64748b" textAnchor="end">
-              {clip(axis2.pole_high, 20)} ↑
-            </text>
-            {/* pole_low at bottom */}
-            <text x={-10} y={ih - 2} fontSize={10} fill="#64748b" textAnchor="end">
-              {clip(axis2.pole_low, 20)} ↓
-            </text>
-            {/* Driver name rotated along y-axis */}
+            {/* pole_high — above-left, left-aligned so it never clips */}
             <text
-              transform={`translate(${-margin.left + 14},${ih / 2}) rotate(-90)`}
+              x={-(margin.left - 8)} y={-38}
+              fontSize={10} fill="#64748b" textAnchor="start"
+            >
+              ↑ {clip(axis2.pole_high, 42)}
+            </text>
+            {/* pole_low — below x-axis labels, left-aligned */}
+            <text
+              x={-(margin.left - 8)} y={ih + 70}
+              fontSize={10} fill="#64748b" textAnchor="start"
+            >
+              ↓ {clip(axis2.pole_low, 42)}
+            </text>
+            {/* Driver name rotated along y-axis — absolute x=14, always in viewBox */}
+            <text
+              transform={`translate(${-(margin.left - 14)},${ih / 2}) rotate(-90)`}
               fontSize={11}
               fill="#94a3b8"
               textAnchor="middle"
