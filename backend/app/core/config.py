@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "llama3.1"
     OLLAMA_MODEL_REASONING: str = "deepseek-r1:14b"  # used for axis/reasoning jobs
+    OLLAMA_EMBEDDING_MODEL: str = "nomic-embed-text"  # used for signal linking
 
     DEEPSEEK_API_KEY: str = ""
     DEEPSEEK_MODEL: str = "deepseek-reasoner"          # DeepSeek R1 — for axis reasoning

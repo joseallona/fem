@@ -8,9 +8,13 @@ Job-type routing:
   quality tasks (brief prose) → default: configurable via LLM_ROUTING env var
   e.g. LLM_ROUTING="brief:groq,summary:ollama"
 """
+import logging
+
 import httpx
 
 from app.core.config import get_runtime_setting, settings
+
+logger = logging.getLogger(__name__)
 
 
 def _escape_control_chars_in_strings(s: str) -> str:
@@ -254,6 +258,24 @@ def call_llm(prompt: str, system: str = "", job_type: str = "quality") -> str:
     return _call_ollama(prompt, system)
 
 
+# --- Embedding ---
+
+def get_embedding(text: str) -> list[float]:
+    """
+    Compute a text embedding via Ollama's embedding endpoint.
+    Uses OLLAMA_EMBEDDING_MODEL (default: nomic-embed-text).
+    """
+    base_url = get_runtime_setting("ollama_base_url", settings.OLLAMA_BASE_URL)
+    model = get_runtime_setting("ollama_embedding_model", settings.OLLAMA_EMBEDDING_MODEL)
+    response = httpx.post(
+        f"{base_url}/api/embeddings",
+        json={"model": model, "prompt": text},
+        timeout=60.0,
+    )
+    response.raise_for_status()
+    return response.json()["embedding"]
+
+
 # --- Task-specific wrappers ---
 
 def extract_signal(document_text: str, theme_name: str, focal_question: str) -> dict:
@@ -339,6 +361,43 @@ Return JSON with:
 - steep_domains (list of strings from: social, technological, economic, environmental, political)
 - s_curve_position (one of: emerging, growth, mature, declining)
 - horizon (one of: H1, H2, H3)
+
+JSON only:"""
+    raw = call_llm(prompt, system, job_type="summary")
+    return _parse_llm_json(raw)
+
+
+def reason_signal_link(
+    title_a: str, summary_a: str,
+    title_b: str, summary_b: str,
+    theme_name: str,
+) -> dict:
+    """
+    Determine whether two signals are meaningfully connected and the nature of their relationship.
+    Returns: {connected: bool, relationship: "reinforcing"|"tensioning", reason: str}
+    """
+    system = (
+        "You are a strategic foresight analyst evaluating whether two signals are meaningfully "
+        "connected within a theme. Return JSON only."
+    )
+    prompt = f"""Theme: {theme_name}
+
+Signal A: {title_a}
+{summary_a}
+
+Signal B: {title_b}
+{summary_b}
+
+Are these two signals meaningfully connected — do they share an underlying force, dynamic, or implication relevant to the theme?
+
+If connected, classify the relationship:
+- reinforcing: both signals push in the same direction or amplify the same trend
+- tensioning: the signals point in opposing directions or represent competing forces
+
+Return JSON with:
+- connected (boolean)
+- relationship (string: "reinforcing" or "tensioning" — only if connected is true, else null)
+- reason (string, 1 sentence — why they are or aren't connected)
 
 JSON only:"""
     raw = call_llm(prompt, system, job_type="summary")

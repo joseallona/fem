@@ -26,6 +26,7 @@ class Signal(Base):
     status = Column(String(50), default="active")  # active | needs_review | archived
     cluster_id = Column(String(100), nullable=True)  # assigned by clustering service
     score_breakdown = Column(JSON, nullable=True)  # {relevance, novelty, impact, source_trust, recency, weights}
+    embedding = Column(Text, nullable=True)  # JSON-encoded float array for signal linking
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     theme = relationship("Theme", back_populates="signals")
@@ -33,12 +34,30 @@ class Signal(Base):
     raw_document = relationship("RawDocument", back_populates="signals")
     scenario_links = relationship("SignalScenario", back_populates="signal", cascade="all, delete-orphan")
     feedback = relationship("UserFeedback", back_populates="signal", cascade="all, delete-orphan")
+    links_as_a = relationship("SignalLink", foreign_keys="SignalLink.signal_a_id",
+                              back_populates="signal_a", cascade="all, delete-orphan")
+    links_as_b = relationship("SignalLink", foreign_keys="SignalLink.signal_b_id",
+                              back_populates="signal_b", cascade="all, delete-orphan")
 
     @property
     def source_url(self) -> str | None:
         if self.raw_document and self.raw_document.url:
             return self.raw_document.url
         return self.source.url if self.source else None
+
+
+class SignalLink(Base):
+    __tablename__ = "signal_links"
+
+    signal_a_id = Column(UUID(as_uuid=True), ForeignKey("signals.id", ondelete="CASCADE"), primary_key=True)
+    signal_b_id = Column(UUID(as_uuid=True), ForeignKey("signals.id", ondelete="CASCADE"), primary_key=True)
+    link_type = Column(String(20), nullable=False)   # cluster | embedding | llm
+    strength = Column(Float, nullable=False, default=1.0)
+    relationship_type = Column(String(20), nullable=True)  # reinforcing | tensioning
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    signal_a = relationship("Signal", foreign_keys="[SignalLink.signal_a_id]", back_populates="links_as_a")
+    signal_b = relationship("Signal", foreign_keys="[SignalLink.signal_b_id]", back_populates="links_as_b")
 
 
 class SignalScenario(Base):

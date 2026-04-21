@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from app.models.signal import Signal
 from app.models.trend import Trend
 from app.services.llm_gateway import synthesize_trend
+from app.services.signal_linker import get_linked_signals
 
 logger = logging.getLogger(__name__)
 
@@ -91,15 +92,48 @@ def _upsert_trend(group_key: str, members: list[Signal], theme, db: Session) -> 
         Trend.cluster_id == group_key,
     ).first()
 
-    signal_dicts = [
-        {
+    signal_dicts = []
+    cross_cluster_links: dict[str, list[dict]] = {}
+
+    for s in members:
+        signal_dicts.append({
             "title": s.title,
             "summary": s.summary or "",
             "steep_category": s.steep_category or "unknown",
             "horizon": s.horizon or "H2",
-        }
-        for s in members
-    ]
+        })
+        linked = get_linked_signals(s.id, db, limit=3)
+        # Collect cross-cluster links (signals not in this cluster) to surface as context
+        member_ids = {str(m.id) for m in members}
+        for lk in linked:
+            rel = lk.get("relationship")
+            if rel and lk.get("id") not in member_ids:
+                cross_cluster_links.setdefault(rel, []).append({
+                    "from_signal": s.title,
+                    "linked_signal": lk["title"],
+                    "linked_summary": lk["summary"],
+                })
+
+    # Inject cross-cluster context into each signal dict so the LLM sees it
+    if cross_cluster_links:
+        reinforcing = cross_cluster_links.get("reinforcing", [])
+        tensioning = cross_cluster_links.get("tensioning", [])
+        if reinforcing:
+            signal_dicts.append({
+                "title": "_CROSS_CLUSTER_CONTEXT_",
+                "summary": "Signals from other clusters that REINFORCE this cluster: " +
+                           "; ".join(f"{r['linked_signal']}" for r in reinforcing[:5]),
+                "steep_category": "context",
+                "horizon": "context",
+            })
+        if tensioning:
+            signal_dicts.append({
+                "title": "_CROSS_CLUSTER_TENSIONS_",
+                "summary": "Signals from other clusters that TENSION this cluster: " +
+                           "; ".join(f"{t['linked_signal']}" for t in tensioning[:3]),
+                "steep_category": "context",
+                "horizon": "context",
+            })
 
     avg_momentum = sum(s.importance_score or 0.5 for s in members) / len(members)
     avg_alignment = sum(s.relevance_score or 0.5 for s in members) / len(members)

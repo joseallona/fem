@@ -1,17 +1,4 @@
 {
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "cd /Users/joseallona/Sites/fem && git add -A && git diff --staged --quiet || (git commit -m \"auto: $(git diff --staged --name-only | head -5 | tr '\\n' ' ' | xargs)\" && git push origin main) 2>/dev/null || true",
-            "statusMessage": "Committing and pushing changes..."
-          }
-        ]
-      }
-    ]
-  },
   "permissions": {
     "allow": [
       "Bash(npx skills-installer:*)",
@@ -61,7 +48,21 @@
       "Bash(git add *)",
       "Bash(git commit *)",
       "Bash(git push *)",
-      "Skill(update-config)"
+      "Skill(update-config)",
+      "Bash(docker exec *)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /Users/joseallona/Sites/fem && git add -A && git diff --staged --quiet || (git commit -m \"auto: $(git diff --staged --name-only | head -5 | tr '\\n' ' ' | xargs)\" && git push origin main) 2>/dev/null || true",
+            "statusMessage": "Committing and pushing changes..."
+          }
+        ]
+      }
     ]
   }
 }

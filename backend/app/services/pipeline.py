@@ -257,6 +257,15 @@ def run_monitoring_pipeline(theme_id: str, run_id: str):
         from app.services.clustering import run_clustering_for_theme
         run_clustering_for_theme(theme_id, db)
 
+        # Stage 11c: Signal linking (knowledge graph)
+        _set_stage(db, run, "Building signal knowledge graph…")
+        try:
+            from app.services.signal_linker import run_signal_linking
+            n_links = run_signal_linking(theme_id, db)
+            logger.info("Signal linking complete — %d links", n_links)
+        except Exception as e:
+            logger.warning("Signal linking failed (non-fatal): %s", e)
+
         # Stage 12: Change detection
         _set_stage(db, run, "Detecting changes…")
         prev_run_id = _get_previous_run_id(db, theme_id, run.id)
