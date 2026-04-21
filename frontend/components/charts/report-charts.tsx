@@ -286,18 +286,42 @@ export function TrendMomentumChart({ trends, width = 720 }: TrendMomentumProps) 
 }
 
 // ── 4. Scenario Quadrant ───────────────────────────────────────────────────
-// 2×2 matrix with scenarios positioned by their axis poles.
-// Circle size = relative evidence share. Colour = momentum state.
 
 interface ScenarioQuadrantProps {
   scenarios: Scenario[];
   drafts: ScenarioDraft[];
   axis1: ScenarioAxis | undefined;
   axis2: ScenarioAxis | undefined;
-  /** support score per scenario id → use simulated when panel open */
   supportValues?: Record<string, number>;
   totalMass?: number;
-  size?: number;
+}
+
+// Subtle quadrant tints: NW, NE, SW, SE
+const Q_FILLS = ["#eff6ff", "#f0fdf4", "#fefce8", "#fdf4ff"];
+const Q_BORDERS = ["#bfdbfe", "#bbf7d0", "#fde68a", "#e9d5ff"];
+
+function wrapLabel(text: string, maxChars = 20): string[] {
+  if (text.length <= maxChars) return [text];
+  const words = text.split(" ");
+  const lines: string[] = [];
+  let line = "";
+  for (const w of words) {
+    const test = line ? `${line} ${w}` : w;
+    if (test.length > maxChars && line) {
+      lines.push(line);
+      line = w;
+      if (lines.length === 2) { line = line + "…"; break; }
+    } else {
+      line = test;
+    }
+  }
+  if (line && lines.length < 3) lines.push(line);
+  return lines.slice(0, 2);
+}
+
+function clip(text: string | undefined, max: number): string {
+  if (!text) return "";
+  return text.length > max ? text.slice(0, max - 1) + "…" : text;
 }
 
 export function ScenarioQuadrantChart({
@@ -307,74 +331,102 @@ export function ScenarioQuadrantChart({
   axis2,
   supportValues,
   totalMass,
-  size = 480,
 }: ScenarioQuadrantProps) {
-  // Map each live scenario to its draft to get quadrant pole info
   const draftByScenarioId = new Map(
-    drafts
-      .filter(d => d.approved_scenario_id)
-      .map(d => [d.approved_scenario_id!, d])
+    drafts.filter(d => d.approved_scenario_id).map(d => [d.approved_scenario_id!, d])
   );
 
-  const mass = totalMass ?? (scenarios.reduce((s, sc) => s + (supportValues?.[sc.id] ?? sc.support_score), 0) || 1);
+  const rawMass = totalMass ?? (scenarios.reduce((s, sc) => s + (supportValues?.[sc.id] ?? sc.support_score), 0));
+  const mass = rawMass || 1;
+  const shares = scenarios.map(sc => (supportValues?.[sc.id] ?? sc.support_score) / mass);
+  const allZero = shares.every(s => s === 0);
 
-  const margin = { top: 36, right: 36, bottom: 36, left: 36 };
-  const iw = size - margin.left - margin.right;
-  const ih = size - margin.top - margin.bottom;
+  // Layout
+  const W = 580, H = 580;
+  const margin = { top: 56, right: 56, bottom: 88, left: 100 };
+  const iw = W - margin.left - margin.right;
+  const ih = H - margin.top - margin.bottom;
+  const qw = iw / 2, qh = ih / 2;
 
-  // Pole positions: low → 0.25, high → 0.75 (centre of each quadrant half)
   function poleToFrac(pole: string | undefined): number {
     return pole === "high" ? 0.75 : 0.25;
   }
-
-  // Fallback positions for when draft info is missing: spread by index
   const FALLBACK: [number, number][] = [[0.25, 0.75], [0.75, 0.75], [0.25, 0.25], [0.75, 0.25]];
 
   const xScale = d3.scaleLinear([0, 1], [0, iw]);
-  const yScale = d3.scaleLinear([0, 1], [ih, 0]); // y=1 at top
+  const yScale = d3.scaleLinear([0, 1], [ih, 0]);
 
-  // Max circle radius so bubbles fit in a quadrant
-  const maxR = Math.min(iw, ih) * 0.18;
-  const minR = 12;
-
-  const shares = scenarios.map(sc => (supportValues?.[sc.id] ?? sc.support_score) / mass);
+  const BUBBLE_R = 38;
   const maxShare = Math.max(...shares, 0.01);
-  const rScale = d3.scaleSqrt([0, maxShare], [minR, maxR]);
+  const rScale = d3.scaleSqrt([0, maxShare], [BUBBLE_R * 0.6, BUBBLE_R * 1.3]);
+
+  // Quadrant fills — ordered NW, NE, SW, SE
+  const quadrants = [
+    { x: 0,   y: 0,   fill: Q_FILLS[0], border: Q_BORDERS[0] },
+    { x: qw,  y: 0,   fill: Q_FILLS[1], border: Q_BORDERS[1] },
+    { x: 0,   y: qh,  fill: Q_FILLS[2], border: Q_BORDERS[2] },
+    { x: qw,  y: qh,  fill: Q_FILLS[3], border: Q_BORDERS[3] },
+  ];
 
   return (
-    <svg width="100%" viewBox={`0 0 ${size} ${size}`} className="overflow-visible">
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`}>
       <g transform={`translate(${margin.left},${margin.top})`}>
-        {/* quadrant lines */}
-        <line x1={iw / 2} y1={0} x2={iw / 2} y2={ih} stroke="#e2e8f0" strokeWidth={1} />
-        <line x1={0} y1={ih / 2} x2={iw} y2={ih / 2} stroke="#e2e8f0" strokeWidth={1} />
 
-        {/* outer border */}
-        <rect x={0} y={0} width={iw} height={ih} fill="none" stroke="#e2e8f0" strokeWidth={1} rx={4} />
+        {/* Quadrant background fills */}
+        {quadrants.map((q, i) => (
+          <rect key={i} x={q.x} y={q.y} width={qw} height={qh} fill={q.fill} />
+        ))}
 
-        {/* axis pole labels */}
+        {/* Quadrant dividers */}
+        <line x1={iw / 2} y1={0} x2={iw / 2} y2={ih} stroke="#cbd5e1" strokeWidth={1.5} />
+        <line x1={0} y1={ih / 2} x2={iw} y2={ih / 2} stroke="#cbd5e1" strokeWidth={1.5} />
+
+        {/* Outer border */}
+        <rect x={0} y={0} width={iw} height={ih} fill="none" stroke="#cbd5e1" strokeWidth={1.5} rx={6} />
+
+        {/* ── X-axis labels (axis1) ── */}
         {axis1 && (
           <>
-            <text x={8} y={ih + 22} fontSize={9} fill="#94a3b8">{axis1.pole_low}</text>
-            <text x={iw - 8} y={ih + 22} fontSize={9} fill="#94a3b8" textAnchor="end">{axis1.pole_high}</text>
-            <text x={iw / 2} y={ih + 34} fontSize={9} fill="#cbd5e1" textAnchor="middle">{axis1.driver_name}</text>
-          </>
-        )}
-        {axis2 && (
-          <>
-            <text x={-12} y={ih - 4} fontSize={9} fill="#94a3b8" textAnchor="end">{axis2.pole_low}</text>
-            <text x={-12} y={14} fontSize={9} fill="#94a3b8" textAnchor="end">{axis2.pole_high}</text>
-            <text
-              transform={`translate(-30,${ih / 2}) rotate(-90)`}
-              fontSize={9}
-              fill="#cbd5e1"
-              textAnchor="middle"
-            >
-              {axis2.driver_name}
+            {/* Arrow + pole_low on far left */}
+            <text x={4} y={ih + 18} fontSize={10} fill="#64748b" textAnchor="start">
+              ← {clip(axis1.pole_low, 26)}
+            </text>
+            {/* Arrow + pole_high on far right */}
+            <text x={iw - 4} y={ih + 18} fontSize={10} fill="#64748b" textAnchor="end">
+              {clip(axis1.pole_high, 26)} →
+            </text>
+            {/* Driver name centered below */}
+            <text x={iw / 2} y={ih + 38} fontSize={11} fill="#94a3b8" textAnchor="middle" fontStyle="italic">
+              {clip(axis1.driver_name, 50)}
             </text>
           </>
         )}
 
-        {/* scenario bubbles */}
+        {/* ── Y-axis labels (axis2) ── */}
+        {axis2 && (
+          <>
+            {/* pole_high at top */}
+            <text x={-10} y={8} fontSize={10} fill="#64748b" textAnchor="end">
+              {clip(axis2.pole_high, 20)} ↑
+            </text>
+            {/* pole_low at bottom */}
+            <text x={-10} y={ih - 2} fontSize={10} fill="#64748b" textAnchor="end">
+              {clip(axis2.pole_low, 20)} ↓
+            </text>
+            {/* Driver name rotated along y-axis */}
+            <text
+              transform={`translate(${-margin.left + 14},${ih / 2}) rotate(-90)`}
+              fontSize={11}
+              fill="#94a3b8"
+              textAnchor="middle"
+              fontStyle="italic"
+            >
+              {clip(axis2.driver_name, 50)}
+            </text>
+          </>
+        )}
+
+        {/* ── Scenario bubbles ── */}
         {scenarios.map((sc, i) => {
           const draft = draftByScenarioId.get(sc.id);
           let fx: number, fy: number;
@@ -386,27 +438,66 @@ export function ScenarioQuadrantChart({
           }
 
           const share = shares[i];
-          const r = rScale(share);
-          const fill = MOMENTUM_FILL[sc.momentum_state] ?? "#94a3b8";
+          const r = allZero ? BUBBLE_R : rScale(share);
+          const fill = MOMENTUM_FILL[sc.momentum_state] ?? "#64748b";
+          const nameLines = wrapLabel(sc.name, 20);
+          const lineH = 14;
+          // Name block sits above the bubble
+          const nameBlockH = nameLines.length * lineH;
+          const nameY = fy - r - 8 - nameBlockH;
 
           return (
             <g key={sc.id}>
-              {/* bubble */}
-              <circle cx={fx} cy={fy} r={r} fill={fill} opacity={0.18} />
-              <circle cx={fx} cy={fy} r={r} fill="none" stroke={fill} strokeWidth={1.5} />
+              {/* Bubble fill */}
+              <circle cx={fx} cy={fy} r={r} fill={fill} opacity={0.15} />
+              {/* Bubble stroke */}
+              <circle cx={fx} cy={fy} r={r} fill="none" stroke={fill} strokeWidth={2} />
 
-              {/* scenario name — split at first space to fit two lines */}
-              <text x={fx} y={fy - 6} textAnchor="middle" dominantBaseline="middle" fontSize={9} fill="#334155" fontWeight={600}>
-                {sc.name.length > 22 ? sc.name.slice(0, 21) + "…" : sc.name}
-              </text>
+              {/* Evidence % inside bubble — only if meaningful */}
+              {!allZero && (
+                <text
+                  x={fx} y={fy}
+                  textAnchor="middle" dominantBaseline="middle"
+                  fontSize={11} fill={fill} fontWeight={700} fontFamily="monospace"
+                >
+                  {Math.round(share * 100)}%
+                </text>
+              )}
 
-              {/* share % */}
-              <text x={fx} y={fy + 10} textAnchor="middle" dominantBaseline="middle" fontSize={9} fill={fill} fontFamily="monospace">
-                {Math.round(share * 100)}%
-              </text>
+              {/* Scenario name above bubble, word-wrapped */}
+              {nameLines.map((line, li) => (
+                <text
+                  key={li}
+                  x={fx}
+                  y={nameY + li * lineH}
+                  textAnchor="middle"
+                  dominantBaseline="hanging"
+                  fontSize={12}
+                  fontWeight={600}
+                  fill="#1e293b"
+                >
+                  {line}
+                </text>
+              ))}
+
+              {/* Momentum dot below bubble */}
+              <circle cx={fx} cy={fy + r + 7} r={4} fill={fill} opacity={0.7} />
             </g>
           );
         })}
+
+        {/* No evidence note */}
+        {allZero && scenarios.length > 0 && (
+          <text
+            x={iw / 2} y={ih + 62}
+            textAnchor="middle"
+            fontSize={10}
+            fill="#94a3b8"
+            fontStyle="italic"
+          >
+            No evidence assigned yet — bubbles are equal size
+          </text>
+        )}
       </g>
     </svg>
   );
