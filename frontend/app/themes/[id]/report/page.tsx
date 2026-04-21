@@ -9,12 +9,24 @@ import {
   type ScenarioAxis, type Scenario, type ScenarioDraft,
   type SignalLinkOut, type PipelineStatus,
 } from "@/lib/api";
-import {
-  SignalScatterChart,
-  SteepDonutChart,
-  TrendMomentumChart,
-  ScenarioQuadrantChart,
-} from "@/components/charts/report-charts";
+import dynamic from "next/dynamic";
+
+const SignalScatterChart = dynamic(
+  () => import("@/components/charts/report-charts").then((m) => m.SignalScatterChart),
+  { ssr: false }
+);
+const SteepDonutChart = dynamic(
+  () => import("@/components/charts/report-charts").then((m) => m.SteepDonutChart),
+  { ssr: false }
+);
+const TrendMomentumChart = dynamic(
+  () => import("@/components/charts/report-charts").then((m) => m.TrendMomentumChart),
+  { ssr: false }
+);
+const ScenarioQuadrantChart = dynamic(
+  () => import("@/components/charts/report-charts").then((m) => m.ScenarioQuadrantChart),
+  { ssr: false }
+);
 
 // ── Mapping simulation (mirrors scoring.py / suggest_scenario_mapping) ────
 // Replicates the Python tokeniser so the browser can re-run the mapping live.
